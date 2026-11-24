@@ -1,0 +1,4137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ФотоКалендарь — Личный график фотографа</title>
+
+  <!-- PWA мета-теги для добавления на экран «Домой» (iOS и Android) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ФотоКалендарь" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#F7F7F5" />
+
+  <!-- Встроенные SVG-иконки приложения (без внешних URL) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23F97316'/%3E%3Crect x='14' y='22' width='36' height='24' rx='6' fill='%23FFFFFF'/%3E%3Crect x='24' y='16' width='16' height='7' rx='2.5' fill='%23FFFFFF'/%3E%3Ccircle cx='32' cy='34' r='7' fill='%2318181A'/%3E%3Ccircle cx='32' cy='34' r='3' fill='%23F97316'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23F97316'/%3E%3Crect x='38' y='60' width='104' height='70' rx='16' fill='%23FFFFFF'/%3E%3Crect x='66' y='44' width='48' height='20' rx='7' fill='%23FFFFFF'/%3E%3Ccircle cx='90' cy='95' r='20' fill='%2318181A'/%3E%3Ccircle cx='90' cy='95' r='8.5' fill='%23F97316'/%3E%3C/svg%3E" />
+
+  <style>
+    /* ========================================================================
+       1. ДИЗАЙН-ТОКЕНЫ И БАЗОВЫЙ СБРОС (0 ВНЕШНИХ ЗАВИСИМОСТЕЙ)
+       ======================================================================== */
+    :root {
+      --bg-outer: #EAEAE6;
+      --bg-app: #F7F7F5;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F3F4F6;
+      --border: #E5E7EB;
+      --border-strong: #D1D5DB;
+
+      --text-primary: #18181A;
+      --text-secondary: #6B7280;
+      --text-muted: #9CA3AF;
+
+      /* Главный акцент — яркий оранжевый */
+      --accent: #F97316;
+      --accent-hover: #EA580C;
+      --accent-soft: #FFF7ED;
+      --accent-border: #FDBA74;
+
+      /* Цвета статусов */
+      --confirmed: #2563EB;
+      --confirmed-bg: #EFF6FF;
+      --confirmed-border: #BFDBFE;
+
+      --editing: #D97706;
+      --editing-bg: #FFFBEB;
+      --editing-border: #FDE68A;
+
+      --delivered: #10B981;
+      --delivered-dark: #059669;
+      --delivered-bg: #ECFDF5;
+      --delivered-border: #A7F3D0;
+
+      --dayoff: #6B7280;
+      --dayoff-bg: #F3F4F6;
+      --dayoff-border: #D1D5DB;
+
+      --danger: #DC2626;
+      --danger-bg: #FEF2F2;
+      --danger-border: #FECACA;
+
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+
+      --shadow-card: 0 1px 2px rgba(24, 24, 26, 0.04);
+      --shadow-shell: 0 20px 60px -15px rgba(24, 24, 26, 0.14), 0 0 0 1px rgba(24, 24, 26, 0.06);
+      --shadow-sheet: 0 -12px 40px -8px rgba(24, 24, 26, 0.22);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.4;
+    }
+
+    button, input, textarea, select {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ========================================================================
+       2. ОБОЛОЧКА МОБИЛЬНОГО ПРИЛОЖЕНИЯ (MOBILE-FIRST, ДО 480px)
+       ======================================================================== */
+    .app-shell {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      background: var(--bg-app);
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    @media (min-width: 520px) {
+      body {
+        background: var(--bg-outer);
+        padding: 16px 0;
+      }
+      .app-shell {
+        min-height: calc(100vh - 32px);
+        min-height: calc(100dvh - 32px);
+        border-radius: 28px;
+        box-shadow: var(--shadow-shell);
+      }
+    }
+
+    /* Верхняя шапка */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(247, 247, 245, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    @media (min-width: 520px) {
+      .app-header {
+        border-radius: 28px 28px 0 0;
+      }
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.28);
+    }
+
+    .brand-text {
+      min-width: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      margin: 1px 0 0;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-primary-sm {
+      height: 38px;
+      padding: 0 13px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.24);
+      transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary-sm:hover,
+    .btn-primary-sm:active {
+      background: var(--accent-hover);
+    }
+
+    /* Основной контейнер контента */
+    .app-main {
+      flex: 1;
+      padding: 14px 14px calc(92px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Фиксированная нижняя навигация (4 вкладки) */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    @media (min-width: 520px) {
+      .bottom-nav {
+        position: sticky;
+        left: auto;
+        transform: none;
+        border-radius: 0 0 28px 28px;
+      }
+    }
+
+    .nav-btn {
+      position: relative;
+      min-height: 52px;
+      border-radius: 14px;
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text-secondary);
+      transition: color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .nav-btn.active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 28px;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      background: var(--accent);
+    }
+
+    .nav-icon-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: -6px;
+      right: -11px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #FFFFFF;
+      line-height: 1;
+    }
+
+    /* ========================================================================
+       3. ОБЩИЕ КАРТОЧКИ, КНОПКИ, БЕЙДЖИ И ПУСТЫЕ СОСТОЯНИЯ
+       ======================================================================== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.25;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .pill-confirmed {
+      color: var(--confirmed);
+      background: var(--confirmed-bg);
+      border-color: var(--confirmed-border);
+    }
+
+    .pill-editing {
+      color: var(--editing);
+      background: var(--editing-bg);
+      border-color: var(--editing-border);
+    }
+
+    .pill-delivered {
+      color: var(--delivered-dark);
+      background: var(--delivered-bg);
+      border-color: var(--delivered-border);
+    }
+
+    .pill-dayoff {
+      color: var(--dayoff);
+      background: var(--dayoff-bg);
+      border-color: var(--dayoff-border);
+    }
+
+    .pill-danger {
+      color: var(--danger);
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+    }
+
+    .pill-orange {
+      color: var(--accent-hover);
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+    }
+
+    .pill-neutral {
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      border-color: var(--border);
+    }
+
+    .btn-primary {
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(249, 115, 22, 0.24);
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:active {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      min-height: 38px;
+      padding: 0 13px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+    }
+
+    .btn-danger-soft {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 14px;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-danger-soft:hover {
+      background: #FEE2E2;
+    }
+
+    .btn-outline-orange {
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      color: var(--accent-hover);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-outline-orange:hover {
+      background: #FFEDD5;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+      transition: background-color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-subtle);
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 12px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      padding: 6px 11px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .segmented-btn.active {
+      background: var(--accent);
+      color: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(249, 115, 22, 0.28);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 2px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .section-sub {
+      margin: 1px 0 0;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .empty-state {
+      background: var(--bg-card);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 28px 18px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .empty-desc {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 300px;
+    }
+
+    /* ========================================================================
+       4. ВКЛАДКА 1: КАЛЕНДАРЬ (ТОЛЬКО «ПОДТВЕРЖДЕНО» И «ВЫХОДНОЙ»)
+       ======================================================================== */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .cal-month-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .cal-month-title {
+      margin: 0;
+      font-size: 15.5px;
+      font-weight: 700;
+      min-width: 134px;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    .btn-today {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 10px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn-today:hover {
+      background: #E5E7EB;
+    }
+
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .cal-wd {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 2px 0;
+    }
+
+    .cal-wd.weekend {
+      color: var(--accent-hover);
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .cal-cell {
+      position: relative;
+      height: 44px;
+      border-radius: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+      border: 1.5px solid transparent;
+      transition: background-color 0.12s ease, border-color 0.12s ease;
+      user-select: none;
+    }
+
+    .cal-cell:hover {
+      background: var(--bg-subtle);
+    }
+
+    .cal-cell.is-dayoff {
+      background-color: #F3F4F6;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(107, 114, 128, 0.18),
+        rgba(107, 114, 128, 0.18) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+      border-color: var(--dayoff-border);
+      color: var(--dayoff);
+      font-weight: 600;
+    }
+
+    .cal-cell.is-today {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-hover);
+      font-weight: 700;
+    }
+
+    .cal-cell.is-selected {
+      background: var(--accent) !important;
+      background-image: none !important;
+      border-color: var(--accent) !important;
+      color: #FFFFFF !important;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.34);
+    }
+
+    .cal-day-num {
+      line-height: 1;
+    }
+
+    .cal-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 6px;
+    }
+
+    .cal-dot {
+      width: 5.5px;
+      height: 5.5px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .dot-confirmed {
+      background: var(--confirmed);
+    }
+
+    .cal-cell.is-selected .cal-dot {
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.92);
+    }
+
+    .cal-legend {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-hatch {
+      width: 13px;
+      height: 10px;
+      border-radius: 3px;
+      border: 1px solid #9CA3AF;
+      background-color: #F3F4F6;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(107, 114, 128, 0.28),
+        rgba(107, 114, 128, 0.28) 2.5px,
+        transparent 2.5px,
+        transparent 5px
+      );
+    }
+
+    /* Панель быстрых действий */
+    .quick-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .quick-date-wrap {
+      min-width: 0;
+    }
+
+    .quick-date-label {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+    }
+
+    .quick-date-value {
+      margin: 1px 0 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .quick-date-today {
+      color: var(--accent);
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Плашка события в списке месяца/дня */
+    .event-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .event-card:active {
+      transform: scale(0.99);
+    }
+
+    .event-card.is-dayoff-card {
+      background: #FAFAFA;
+    }
+
+    .event-card.is-highlighted {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.14);
+    }
+
+    .date-badge {
+      width: 46px;
+      padding: 8px 4px;
+      border-radius: 12px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .date-badge-num {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .date-badge-wd {
+      margin-top: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .event-card.is-highlighted .date-badge {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .event-card.is-highlighted .date-badge-num,
+    .event-card.is-highlighted .date-badge-wd {
+      color: #FFFFFF;
+    }
+
+    .date-badge.is-today-badge {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+    }
+
+    .date-badge.is-today-badge .date-badge-num,
+    .date-badge.is-today-badge .date-badge-wd {
+      color: var(--accent-hover);
+    }
+
+    .date-badge.is-dayoff-badge {
+      background-color: #F3F4F6;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(107, 114, 128, 0.16),
+        rgba(107, 114, 128, 0.16) 3px,
+        transparent 3px,
+        transparent 6px
+      );
+    }
+
+    .event-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .event-time {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .event-time.muted {
+      color: var(--text-secondary);
+    }
+
+    .event-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-meta {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-meta span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: space-between;
+      align-self: stretch;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .price-hint {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .price-hint.paid {
+      color: var(--delivered-dark);
+    }
+
+    /* ========================================================================
+       5. ВКЛАДКА 2: В ОБРАБОТКЕ (ОЧЕРЕДЬ ПО ДЕДЛАЙНУ)
+       ======================================================================== */
+    .stats-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 13px 14px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .stat-box.alert {
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+    }
+
+    .stat-label {
+      margin: 0;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .stat-box.alert .stat-label {
+      color: var(--danger);
+    }
+
+    .stat-val {
+      margin: 4px 0 0;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--text-primary);
+    }
+
+    .stat-box.alert .stat-val {
+      color: var(--danger);
+    }
+
+    .editing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .editing-card.is-overdue {
+      border-color: var(--danger-border);
+      background: #FFFDFD;
+    }
+
+    .editing-card.is-urgent {
+      border-color: var(--editing-border);
+    }
+
+    .editing-card-top {
+      padding: 14px 15px 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .editing-badges {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .deadline-date-note {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .editing-title {
+      margin: 0;
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .editing-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .editing-detail-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .editing-detail-row span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+    }
+
+    .contact-text {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-copy-mini {
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 9px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-copy-mini:hover {
+      color: var(--accent-hover);
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+
+    .editing-balance-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      padding-top: 2px;
+    }
+
+    .editing-balance-row strong {
+      color: var(--accent-hover);
+      font-weight: 700;
+    }
+
+    .editing-card-footer {
+      padding: 11px 15px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* КРИТИЧНО: одна полноразмерная контурная кнопка «Отдано» на прозрачном фоне */
+    .btn-deliver-outline {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: transparent;
+      border: 1.5px solid #F97316;
+      color: #F97316;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-deliver-outline .icon-checked {
+      display: none;
+    }
+
+    .btn-deliver-outline:hover,
+    .btn-deliver-outline:active {
+      background: #F97316;
+      border-color: #F97316;
+      color: #FFFFFF;
+    }
+
+    .btn-deliver-outline:hover .icon-unchecked,
+    .btn-deliver-outline:active .icon-unchecked {
+      display: none;
+    }
+
+    .btn-deliver-outline:hover .icon-checked,
+    .btn-deliver-outline:active .icon-checked {
+      display: block;
+    }
+
+    /* ========================================================================
+       6. ВКЛАДКА 3: ФИНАНСЫ (СВОДКА + РАЗБИВКА ПО СТАТУСАМ + БЭКАП, БЕЗ КАРТОЧЕК)
+       ======================================================================== */
+    .month-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 4px;
+    }
+
+    .month-bar-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .kpi-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .kpi-card {
+      border-radius: var(--radius-md);
+      padding: 11px 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-app);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .kpi-card.kpi-total {
+      background: #18181A;
+      border-color: #18181A;
+      color: #FFFFFF;
+    }
+
+    .kpi-card.kpi-paid {
+      background: var(--delivered-bg);
+      border-color: var(--delivered-border);
+    }
+
+    .kpi-card.kpi-rem {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+    }
+
+    .kpi-label {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .kpi-card.kpi-total .kpi-label { color: #A1A1AA; }
+    .kpi-card.kpi-paid .kpi-label  { color: var(--delivered-dark); }
+    .kpi-card.kpi-rem .kpi-label   { color: var(--accent-hover); }
+
+    .kpi-val {
+      margin: 0;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kpi-card.kpi-total .kpi-val { color: #FFFFFF; }
+    .kpi-card.kpi-paid .kpi-val  { color: var(--delivered-dark); }
+    .kpi-card.kpi-rem .kpi-val   { color: var(--accent-hover); }
+
+    .progress-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .progress-meta strong {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--delivered);
+      transition: width 0.25s ease;
+    }
+
+    /* Агрегированные строки разбивки по статусам */
+    .breakdown-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .breakdown-row {
+      width: 100%;
+      text-align: left;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .breakdown-row:hover {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+
+    .breakdown-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .breakdown-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .breakdown-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .breakdown-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .breakdown-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .breakdown-nums {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .breakdown-total {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .breakdown-rem {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-hover);
+    }
+
+    .breakdown-rem.zero {
+      color: var(--delivered-dark);
+    }
+
+    .backup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .danger-actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* ========================================================================
+       7. ВКЛАДКА 4: АРХИВ (ТОЛЬКО «ОТДАНО», ПОИСК, ФИЛЬТРЫ, ГРУППИРОВКА)
+       ======================================================================== */
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 14px 10px 38px;
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+    }
+
+    .chips-scroll {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .chips-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chip {
+      padding: 8px 13px;
+      border-radius: 11px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .archive-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 2px 2px;
+    }
+
+    .archive-group-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+    }
+
+    .archive-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .archive-card:active {
+      transform: scale(0.99);
+    }
+
+    .archive-card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    .archive-card-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .archive-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .archive-card-footer {
+      padding-top: 9px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* ========================================================================
+       8. МОДАЛЬНЫЕ ОКНА (BOTTOM SHEET), ПОДТВЕРЖДЕНИЕ И TOAST
+       ======================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(24, 24, 26, 0.48);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeIn 0.16s ease-out;
+    }
+
+    @media (min-width: 520px) {
+      .modal-backdrop {
+        align-items: center;
+        padding: 16px;
+      }
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 480px;
+      max-height: 92dvh;
+      background: #FFFFFF;
+      border-radius: 24px 24px 0 0;
+      box-shadow: var(--shadow-sheet);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @media (min-width: 520px) {
+      .sheet {
+        border-radius: 24px;
+      }
+    }
+
+    .sheet-header {
+      padding: 10px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-handle {
+      width: 38px;
+      height: 4px;
+      border-radius: 999px;
+      background: #D1D5DB;
+      margin: 0 auto 10px;
+    }
+
+    @media (min-width: 520px) {
+      .sheet-handle { display: none; }
+    }
+
+    .sheet-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 16.5px;
+      font-weight: 700;
+    }
+
+    .sheet-sub {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .sheet-footer {
+      padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--border);
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 13px;
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .input:focus {
+      background: #FFFFFF;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+    }
+
+    textarea.input {
+      min-height: 78px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .format-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .mini-chip {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .mini-chip:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+
+    .status-picker {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      padding: 4px;
+      border-radius: 14px;
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+    }
+
+    .status-opt {
+      min-height: 38px;
+      padding: 6px 4px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .status-opt.active-confirmed { background: var(--confirmed); color: #FFFFFF; }
+    .status-opt.active-editing   { background: var(--editing);   color: #FFFFFF; }
+    .status-opt.active-delivered { background: var(--delivered); color: #FFFFFF; }
+
+    .conflict-banner {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      border-radius: 14px;
+      padding: 11px 12px;
+      color: var(--danger);
+      font-size: 12.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .conflict-title {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .finance-panel {
+      background: var(--bg-app);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .finance-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .btn-paid-toggle {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 12px;
+      border-radius: 11px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-paid-toggle.is-paid {
+      background: var(--delivered-bg);
+      border-color: var(--delivered);
+      color: var(--delivered-dark);
+    }
+
+    .input-with-btn {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-with-btn .input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .deadline-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .deadline-presets {
+      display: flex;
+      gap: 4px;
+    }
+
+    .preset-btn {
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .preset-btn:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+
+    /* Диалог подтверждения (замена alert/confirm) */
+    .confirm-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(24, 24, 26, 0.52);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fadeIn 0.14s ease-out;
+    }
+
+    .confirm-box {
+      width: 100%;
+      max-width: 340px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.24);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      animation: popIn 0.16s ease-out;
+    }
+
+    .confirm-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .confirm-msg {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    /* Всплывающие уведомления (Toast + Undo) */
+    .toast-wrap {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      z-index: 60;
+      width: calc(100% - 28px);
+      max-width: 450px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: #18181A;
+      color: #FFFFFF;
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      animation: popIn 0.18s ease-out;
+    }
+
+    .toast.is-error {
+      background: var(--danger);
+    }
+
+    .toast-action {
+      padding: 6px 11px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .toast-action:hover {
+      background: var(--accent-hover);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0.7; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Главная оболочка мобильного приложения -->
+  <div class="app-shell">
+
+    <!-- Верхняя шапка -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 id="header-title" class="brand-title">ФотоКалендарь</h1>
+          <p id="header-subtitle" class="brand-sub">Личный график фотографа</p>
+        </div>
+      </div>
+
+      <button id="header-add-btn" type="button" class="btn-primary-sm" aria-label="Добавить съёмку">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+        <span>Съёмка</span>
+      </button>
+    </header>
+
+    <!-- Контент активной вкладки -->
+    <main id="app-main" class="app-main"></main>
+
+    <!-- Фиксированная нижняя навигация (4 вкладки) -->
+    <nav class="bottom-nav" aria-label="Разделы приложения">
+      <!-- 1. Календарь -->
+      <button type="button" class="nav-btn active" data-tab="calendar">
+        <span class="nav-icon-wrap">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </span>
+        <span class="nav-label">Календарь</span>
+      </button>
+
+      <!-- 2. В обработке -->
+      <button type="button" class="nav-btn" data-tab="editing">
+        <span class="nav-icon-wrap">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span id="editing-badge" class="nav-badge hidden">0</span>
+        </span>
+        <span class="nav-label">В обработке</span>
+      </button>
+
+      <!-- 3. Финансы -->
+      <button type="button" class="nav-btn" data-tab="finance">
+        <span class="nav-icon-wrap">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+            <line x1="2" y1="10" x2="22" y2="10"></line>
+          </svg>
+        </span>
+        <span class="nav-label">Финансы</span>
+      </button>
+
+      <!-- 4. Архив -->
+      <button type="button" class="nav-btn" data-tab="archive">
+        <span class="nav-icon-wrap">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+            <rect x="1" y="3" width="22" height="5" rx="1"></rect>
+            <line x1="10" y1="12" x2="14" y2="12"></line>
+          </svg>
+        </span>
+        <span class="nav-label">Архив</span>
+      </button>
+    </nav>
+
+    <!-- Контейнеры модалок, подтверждений и тостов -->
+    <div id="modal-root" class="modal-backdrop hidden"></div>
+    <div id="confirm-root" class="confirm-backdrop hidden"></div>
+    <div id="toast-root" class="toast-wrap"></div>
+
+    <!-- Скрытый input для импорта JSON -->
+    <input id="json-import-input" type="file" accept=".json,application/json" class="hidden" />
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ======================================================================
+         1. КОНСТАНТЫ И РУССКАЯ ЛОКАЛИЗАЦИЯ
+         ====================================================================== */
+      const STORAGE_KEY_EVENTS = 'photocal_pwa_v7_events';
+      const STORAGE_KEY_INIT   = 'photocal_pwa_v7_initialized';
+
+      const MONTHS_NOM = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ];
+
+      const MONTHS_GEN = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+      ];
+
+      const WEEKDAYS_HEADER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      const WEEKDAYS_JS     = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+      const FORMAT_CHIPS = ['Репортаж', 'Концерт', 'Корпоратив', 'Танцы', 'День рождения', 'Портрет'];
+      const DAYOFF_CHIPS = ['Выходной', 'Отдых', 'Личные дела', 'Поездка'];
+
+      /* ======================================================================
+         2. БЕЗОПАСНОЕ ХРАНИЛИЩЕ (localStorage + IN-MEMORY FALLBACK)
+         ====================================================================== */
+      const memoryStorage = Object.create(null);
+
+      function storageGet(key) {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            return window.localStorage.getItem(key);
+          }
+        } catch (err) {
+          /* переход на fallback в памяти */
+        }
+        return Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null;
+      }
+
+      function storageSet(key, value) {
+        memoryStorage[key] = String(value);
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(key, String(value));
+          }
+        } catch (err) {
+          /* данные уже сохранены в memoryStorage */
+        }
+      }
+
+      /* ======================================================================
+         3. УТИЛИТЫ ЛОКАЛЬНЫХ ДАТ (БЕЗ toISOString ДЛЯ ИСКЛЮЧЕНИЯ СДВИГОВ ЧП)
+         ====================================================================== */
+      function formatLocalDate(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+
+      function getTodayStr() {
+        return formatLocalDate(new Date());
+      }
+
+      function parseLocalDate(str) {
+        if (!str || typeof str !== 'string') return null;
+        const parts = str.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(function (n) { return isNaN(n); })) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+
+      function addDaysLocal(str, delta) {
+        const dt = parseLocalDate(str) || new Date();
+        return formatLocalDate(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + delta));
+      }
+
+      function getDaysDiffFromToday(targetStr) {
+        const today = parseLocalDate(getTodayStr());
+        const target = parseLocalDate(targetStr);
+        if (!today || !target) return null;
+        return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      }
+
+      function formatDateRu(str, includeYear) {
+        const dt = parseLocalDate(str);
+        if (!dt) return '—';
+        const base = dt.getDate() + ' ' + MONTHS_GEN[dt.getMonth()];
+        return includeYear ? (base + ' ' + dt.getFullYear()) : base;
+      }
+
+      function formatDateWithWeekday(str) {
+        const dt = parseLocalDate(str);
+        if (!dt) return '—';
+        return dt.getDate() + ' ' + MONTHS_GEN[dt.getMonth()] + ', ' + WEEKDAYS_JS[dt.getDay()];
+      }
+
+      function getMonthKey(year, monthIdx) {
+        return year + '-' + String(monthIdx + 1).padStart(2, '0');
+      }
+
+      /* ======================================================================
+         4. ОБЩИЕ УТИЛИТЫ (ЭКРАНИРОВАНИЕ, ФОРМАТИРОВАНИЕ, КОНФЛИКТЫ, БУФЕР)
+         ====================================================================== */
+      function escapeHtml(val) {
+        if (val === null || val === undefined) return '';
+        return String(val)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function pluralize(n, forms) {
+        const abs = Math.abs(n) % 100;
+        const last = abs % 10;
+        if (abs > 10 && abs < 20) return forms[2];
+        if (last > 1 && last < 5) return forms[1];
+        if (last === 1) return forms[0];
+        return forms[2];
+      }
+
+      function formatRub(amount) {
+        const num = Math.max(0, Math.round(Number(amount) || 0));
+        return num.toLocaleString('ru-RU') + ' ₽';
+      }
+
+      function generateId() {
+        return 'ev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+      }
+
+      function calcFinance(ev) {
+        const total = Math.max(0, Number(ev.totalPrice) || 0);
+        const paid = ev.isPaidFull ? total : Math.min(total, Math.max(0, Number(ev.prepayment) || 0));
+        const remaining = Math.max(0, total - paid);
+        return { total: total, paid: paid, remaining: remaining };
+      }
+
+      function timeToMinutes(t) {
+        if (!t || typeof t !== 'string' || t.indexOf(':') === -1) return null;
+        const parts = t.split(':').map(Number);
+        if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+        return parts[0] * 60 + parts[1];
+      }
+
+      function sortChronologically(arr) {
+        return arr.slice().sort(function (a, b) {
+          const d = (a.date || '').localeCompare(b.date || '');
+          if (d !== 0) return d;
+          if (a.type === 'dayoff' && b.type !== 'dayoff') return -1;
+          if (a.type !== 'dayoff' && b.type === 'dayoff') return 1;
+          return (a.startTime || '99:99').localeCompare(b.startTime || '99:99');
+        });
+      }
+
+      /**
+       * Проверка пересечений по времени ТОЛЬКО с подтверждёнными съёмками и выходными на указанную дату.
+       */
+      function detectScheduleConflicts(params) {
+        const date = params.date;
+        if (!date) return [];
+
+        const sameDayActive = state.events.filter(function (e) {
+          if (e.date !== date || e.id === params.excludeId) return false;
+          return e.type === 'dayoff' || (e.type === 'shoot' && e.status === 'confirmed');
+        });
+
+        const warnings = [];
+        const sNew = timeToMinutes(params.startTime);
+        const eNew = timeToMinutes(params.endTime);
+
+        for (let i = 0; i < sameDayActive.length; i++) {
+          const ex = sameDayActive[i];
+          if (ex.type === 'dayoff') {
+            warnings.push('Эта дата закрыта как выходной: «' + (ex.title || 'Выходной') + '».');
+            continue;
+          }
+          if (params.isDayOff) {
+            const tm = ex.startTime ? (' (' + ex.startTime + (ex.endTime ? '–' + ex.endTime : '') + ')') : '';
+            warnings.push('На эту дату уже подтверждена съёмка: «' + ex.title + '»' + tm + '.');
+            continue;
+          }
+          const sEx = timeToMinutes(ex.startTime);
+          const eEx = timeToMinutes(ex.endTime);
+          if (sNew !== null && eNew !== null && sEx !== null && eEx !== null) {
+            if (sNew < eEx && sEx < eNew) {
+              warnings.push('Пересечение по времени со съёмкой «' + ex.title + '» (' + ex.startTime + '–' + ex.endTime + ').');
+            }
+          } else if (sNew !== null && sEx !== null && sNew === sEx) {
+            warnings.push('Совпадает время начала со съёмкой «' + ex.title + '» (' + ex.startTime + ').');
+          }
+        }
+        return warnings;
+      }
+
+      /* Надёжное копирование в буфер обмена через document.execCommand('copy') */
+      function copyToClipboard(text, successMsg) {
+        if (!text) return;
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          ta.setSelectionRange(0, ta.value.length);
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) showToast(successMsg || 'Скопировано в буфер');
+          else showToast('Не удалось скопировать', 'error');
+        } catch (err) {
+          showToast('Ошибка копирования', 'error');
+        }
+      }
+
+      /* ======================================================================
+         5. ДИНАМИЧЕСКИЕ ДЕМО-ДАННЫЕ (ОТНОСИТЕЛЬНО new Date())
+         ====================================================================== */
+      function createDynamicDemoData() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const todayDay = now.getDate();
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        const todayStr = formatLocalDate(now);
+
+        // Выбор уникальных дней в текущем месяце (предпочитаем сегодня и будущие даты)
+        const usedDays = Object.create(null);
+        function pickDayInCurrentMonth(preferred) {
+          const clamped = Math.max(1, Math.min(daysInMonth, preferred));
+          if (!usedDays[clamped]) {
+            usedDays[clamped] = true;
+            return formatLocalDate(new Date(y, m, clamped));
+          }
+          for (let step = 1; step <= daysInMonth; step++) {
+            if (clamped + step <= daysInMonth && !usedDays[clamped + step]) {
+              usedDays[clamped + step] = true;
+              return formatLocalDate(new Date(y, m, clamped + step));
+            }
+            if (clamped - step >= 1 && !usedDays[clamped - step]) {
+              usedDays[clamped - step] = true;
+              return formatLocalDate(new Date(y, m, clamped - step));
+            }
+          }
+          return formatLocalDate(new Date(y, m, clamped));
+        }
+
+        // 4 подтверждённые съёмки + 2 выходных в текущем месяце (видны только в «Календаре»)
+        const dConf1 = pickDayInCurrentMonth(todayDay);
+        const dConf2 = pickDayInCurrentMonth(todayDay + 2);
+        const dConf3 = pickDayInCurrentMonth(todayDay + 5);
+        const dConf4 = pickDayInCurrentMonth(todayDay + 9);
+        const dOff1  = pickDayInCurrentMonth(todayDay + 1);
+        const dOff2  = pickDayInCurrentMonth(todayDay + 6);
+
+        // 2 съёмки «В обработке» (видны только в «В обработке»)
+        const dEdit1 = addDaysLocal(todayStr, -9);
+        const dEdit2 = addDaysLocal(todayStr, -3);
+
+        // 3 съёмки «Отдано» в текущем и прошлом месяце (видны только в «Архиве»)
+        const prevMonthLast = new Date(y, m, 0).getDate();
+        const dArchCurr = formatLocalDate(new Date(y, m, Math.max(1, todayDay - 10)));
+        const dArchPrev1 = formatLocalDate(new Date(y, m - 1, Math.min(22, prevMonthLast)));
+        const dArchPrev2 = formatLocalDate(new Date(y, m - 1, Math.min(11, prevMonthLast)));
+
+        return [
+          // --- ПОДТВЕРЖДЕНО (4 шт. в текущем месяце) ---
+          {
+            id: 'demo-conf-1',
+            type: 'shoot',
+            title: 'Репортаж: форум IT-среда',
+            status: 'confirmed',
+            date: dConf1,
+            startTime: '11:00',
+            endTime: '14:30',
+            location: 'Центр событий «Атриум», зал 2',
+            contact: 'Елена @elena_events',
+            totalPrice: 22000,
+            prepayment: 10000,
+            isPaidFull: false,
+            deadline: addDaysLocal(dConf1, 5),
+            notes: '24-70mm + 85mm + накамерная вспышка. 15 фото анонса вечером.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-conf-2',
+            type: 'shoot',
+            title: 'Концерт: акустический вечер джаза',
+            status: 'confirmed',
+            date: dConf2,
+            startTime: '19:00',
+            endTime: '22:00',
+            location: 'Клуб «Синий бархат»',
+            contact: 'Максим +7 916 540-21-09',
+            totalPrice: 18000,
+            prepayment: 8000,
+            isPaidFull: false,
+            deadline: addDaysLocal(dConf2, 7),
+            notes: 'Светосильные фиксы 35mm и 85mm, съёмка без вспышки.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-conf-3',
+            type: 'shoot',
+            title: 'Танцы: вечер сальсы и бачаты',
+            status: 'confirmed',
+            date: dConf3,
+            startTime: '18:30',
+            endTime: '22:30',
+            location: 'Лофт «Палитра», ул. Свободы 14',
+            contact: 'Школа Ritmo +7 903 771-55-12',
+            totalPrice: 20000,
+            prepayment: 10000,
+            isPaidFull: false,
+            deadline: addDaysLocal(dConf3, 7),
+            notes: 'Динамика пар, эмоции, общие планы танцпола.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-conf-4',
+            type: 'shoot',
+            title: 'Портрет: индивидуальная съёмка в студии',
+            status: 'confirmed',
+            date: dConf4,
+            startTime: '13:00',
+            endTime: '15:00',
+            location: 'Фотостудия «Свет», зал Минимал',
+            contact: 'Ольга @olga_st',
+            totalPrice: 15000,
+            prepayment: 15000,
+            isPaidFull: true,
+            deadline: addDaysLocal(dConf4, 5),
+            notes: 'Естественный свет + отражатель, 2 образа.',
+            isDemo: true,
+          },
+
+          // --- ВЫХОДНЫЕ (2 шт. в текущем месяце) ---
+          {
+            id: 'demo-off-1',
+            type: 'dayoff',
+            title: 'Отдых — загородная поездка',
+            date: dOff1,
+            isDemo: true,
+          },
+          {
+            id: 'demo-off-2',
+            type: 'dayoff',
+            title: 'Личные дела',
+            date: dOff2,
+            isDemo: true,
+          },
+
+          // --- В ОБРАБОТКЕ (2 шт.: 1 просрочена, 1 через 3 дня) ---
+          {
+            id: 'demo-edit-1',
+            type: 'shoot',
+            title: 'Корпоратив дизайн-студии «Форма»',
+            status: 'editing',
+            date: dEdit1,
+            startTime: '18:00',
+            endTime: '22:30',
+            location: 'Лофт «Фабрика», павильон 3',
+            contact: 'Дарья @dasha_forma',
+            totalPrice: 30000,
+            prepayment: 15000,
+            isPaidFull: false,
+            deadline: addDaysLocal(todayStr, -2), // Просрочено на 2 дня
+            notes: 'Серия с награждения и командные портреты в едином цвете.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-edit-2',
+            type: 'shoot',
+            title: 'День рождения: юбилей в ресторане',
+            status: 'editing',
+            date: dEdit2,
+            startTime: '17:00',
+            endTime: '21:00',
+            location: 'Ресторан «Веранда», малый зал',
+            contact: 'Михаил +7 926 310-04-88',
+            totalPrice: 24000,
+            prepayment: 14000,
+            isPaidFull: false,
+            deadline: addDaysLocal(todayStr, 3), // Осталось 3 дня
+            notes: 'Тёплая цветокоррекция, отдать галереей.',
+            isDemo: true,
+          },
+
+          // --- ОТДАНО / АРХИВ (3 шт.: 2 оплачены полностью, 1 с остатком) ---
+          {
+            id: 'demo-arch-1',
+            type: 'shoot',
+            title: 'Портрет: деловая фотосессия для Анны',
+            status: 'delivered',
+            date: dArchCurr,
+            startTime: '12:00',
+            endTime: '14:00',
+            location: 'Фотостудия «Белый зал»',
+            contact: 'Анна +7 916 442-18-90',
+            totalPrice: 14000,
+            prepayment: 14000,
+            isPaidFull: true,
+            deadline: addDaysLocal(dArchCurr, 4),
+            notes: 'Отдано 45 фото в ретуши. Полностью оплачено.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-arch-2',
+            type: 'shoot',
+            title: 'Репортаж: открытие кофейни «Зерно»',
+            status: 'delivered',
+            date: dArchPrev1,
+            startTime: '10:00',
+            endTime: '13:00',
+            location: 'ул. Покровка, 28',
+            contact: 'Игорь @igor_zerno',
+            totalPrice: 18000,
+            prepayment: 14000,
+            isPaidFull: false, // Есть остаток 4 000 ₽
+            deadline: addDaysLocal(dArchPrev1, 5),
+            notes: 'Интерьер, бариста, гости. Ссылка на облако отправлена.',
+            isDemo: true,
+          },
+          {
+            id: 'demo-arch-3',
+            type: 'shoot',
+            title: 'Концерт: камерный оркестр при свечах',
+            status: 'delivered',
+            date: dArchPrev2,
+            startTime: '20:00',
+            endTime: '22:00',
+            location: 'Особняк «Модерн», большой зал',
+            contact: 'Виктория @vika_music',
+            totalPrice: 21000,
+            prepayment: 21000,
+            isPaidFull: true,
+            deadline: addDaysLocal(dArchPrev2, 6),
+            notes: 'Полный сет в облаке, клиент очень доволен.',
+            isDemo: true,
+          },
+        ];
+      }
+
+      /* ======================================================================
+         6. СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+         ====================================================================== */
+      const nowInit = new Date();
+      const state = {
+        events: [],
+        activeTab: 'calendar',        // 'calendar' | 'editing' | 'finance' | 'archive'
+        viewYear: nowInit.getFullYear(),
+        viewMonth: nowInit.getMonth(),
+        selectedDate: getTodayStr(),
+        calListMode: 'month',         // 'month' | 'day'
+        financePeriodMode: 'month',   // 'month' | 'all'
+        financeYear: nowInit.getFullYear(),
+        financeMonth: nowInit.getMonth(),
+        archiveSearch: '',
+        archivePayFilter: 'all',      // 'all' | 'paid' | 'unpaid'
+      };
+
+      function saveEvents() {
+        storageSet(STORAGE_KEY_EVENTS, JSON.stringify(state.events));
+      }
+
+      function loadEvents() {
+        const initialized = storageGet(STORAGE_KEY_INIT);
+        const raw = storageGet(STORAGE_KEY_EVENTS);
+        if (!initialized && !raw) {
+          state.events = createDynamicDemoData();
+          saveEvents();
+          storageSet(STORAGE_KEY_INIT, '1');
+          return;
+        }
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              state.events = parsed;
+              return;
+            }
+          } catch (err) {
+            /* некорректный JSON — начинаем с чистого списка */
+          }
+        }
+        state.events = [];
+      }
+
+      function injectPwaManifest() {
+        try {
+          const manifest = {
+            name: 'ФотоКалендарь — Личный график фотографа',
+            short_name: 'ФотоКалендарь',
+            start_url: '.',
+            display: 'standalone',
+            background_color: '#F7F7F5',
+            theme_color: '#F7F7F5',
+            lang: 'ru',
+          };
+          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+          const link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = URL.createObjectURL(blob);
+          document.head.appendChild(link);
+        } catch (err) {
+          /* не критично внутри изолированного iframe */
+        }
+      }
+
+      /* ======================================================================
+         7. TOAST-УВЕДОМЛЕНИЯ (С КНОПКОЙ «ОТМЕНИТЬ») И ДИАЛОГ ПОДТВЕРЖДЕНИЯ
+         ====================================================================== */
+      function showToast(message, type, action, duration) {
+        const root = document.getElementById('toast-root');
+        const el = document.createElement('div');
+        el.className = 'toast' + (type === 'error' ? ' is-error' : '');
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message;
+        el.appendChild(textSpan);
+
+        let timer = null;
+        function removeToast() {
+          if (timer) clearTimeout(timer);
+          el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(8px)';
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 200);
+        }
+
+        if (action && typeof action.onClick === 'function') {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'toast-action';
+          btn.textContent = action.label || 'Отменить';
+          btn.addEventListener('click', function () {
+            action.onClick();
+            removeToast();
+          });
+          el.appendChild(btn);
+        }
+
+        root.appendChild(el);
+        const ms = action ? Math.max(5000, duration || 5000) : (duration || 3200);
+        timer = setTimeout(removeToast, ms);
+      }
+
+      function openConfirm(opts) {
+        const root = document.getElementById('confirm-root');
+        root.classList.remove('hidden');
+        const okCls = opts.danger ? 'btn-danger-soft' : 'btn-primary';
+
+        root.innerHTML =
+          '<div class="confirm-box">' +
+            '<h3 class="confirm-title">' + escapeHtml(opts.title) + '</h3>' +
+            '<p class="confirm-msg">' + escapeHtml(opts.message) + '</p>' +
+            '<div class="grid-2">' +
+              '<button id="c-cancel" type="button" class="btn-secondary" style="min-height:44px">Отмена</button>' +
+              '<button id="c-ok" type="button" class="' + okCls + '">' + escapeHtml(opts.confirmText || 'Подтвердить') + '</button>' +
+            '</div>' +
+          '</div>';
+
+        function close() {
+          root.classList.add('hidden');
+          root.innerHTML = '';
+        }
+
+        root.onclick = function (e) { if (e.target === root) close(); };
+        document.getElementById('c-cancel').onclick = close;
+        document.getElementById('c-ok').onclick = function () {
+          close();
+          if (typeof opts.onConfirm === 'function') opts.onConfirm();
+        };
+      }
+
+      /* ======================================================================
+         8. ОБНОВЛЕНИЕ ШАПКИ, БЕЙДЖА И РОУТИНГ 4 ВКЛАДОК
+         ====================================================================== */
+      function switchTab(tabName) {
+        state.activeTab = tabName;
+        renderApp();
+        window.scrollTo(0, 0);
+      }
+
+      function updateChrome() {
+        const editingCount = state.events.filter(function (e) {
+          return e.type === 'shoot' && e.status === 'editing';
+        }).length;
+
+        const archiveCount = state.events.filter(function (e) {
+          return e.type === 'shoot' && e.status === 'delivered';
+        }).length;
+
+        const badge = document.getElementById('editing-badge');
+        if (editingCount > 0) {
+          badge.textContent = editingCount > 99 ? '99+' : String(editingCount);
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+
+        const titleEl = document.getElementById('header-title');
+        const subEl = document.getElementById('header-subtitle');
+
+        if (state.activeTab === 'calendar') {
+          titleEl.textContent = 'ФотоКалендарь';
+          subEl.textContent = 'Подтверждённые съёмки и выходные';
+        } else if (state.activeTab === 'editing') {
+          titleEl.textContent = 'В обработке';
+          subEl.textContent = editingCount > 0
+            ? ('В очереди: ' + editingCount + ' ' + pluralize(editingCount, ['съёмка', 'съёмки', 'съёмок']))
+            : 'Очередь обработки пуста';
+        } else if (state.activeTab === 'finance') {
+          titleEl.textContent = 'Финансы';
+          subEl.textContent = 'Сводка доходов и резервная копия';
+        } else {
+          titleEl.textContent = 'Архив';
+          subEl.textContent = archiveCount > 0
+            ? ('Отдано: ' + archiveCount + ' ' + pluralize(archiveCount, ['съёмка', 'съёмки', 'съёмок']))
+            : 'Отданные съёмки';
+        }
+
+        document.querySelectorAll('.nav-btn').forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === state.activeTab);
+        });
+      }
+
+      function renderApp(opts) {
+        updateChrome();
+        const main = document.getElementById('app-main');
+        if (state.activeTab === 'calendar') {
+          renderCalendarTab(main, opts || {});
+        } else if (state.activeTab === 'editing') {
+          renderEditingTab(main);
+        } else if (state.activeTab === 'finance') {
+          renderFinanceTab(main);
+        } else {
+          renderArchiveTab(main);
+        }
+      }
+
+      /* ======================================================================
+         9. ВКЛАДКА 1: КАЛЕНДАРЬ (СТРОГО ТОЛЬКО «ПОДТВЕРЖДЕНО» И «ВЫХОДНОЙ»)
+         ====================================================================== */
+      function getCalendarEvents() {
+        return state.events.filter(function (e) {
+          return e.type === 'dayoff' || (e.type === 'shoot' && e.status === 'confirmed');
+        });
+      }
+
+      function renderCalendarTab(container, opts) {
+        const todayStr = getTodayStr();
+        const year = state.viewYear;
+        const month = state.viewMonth;
+        const monthKey = getMonthKey(year, month);
+        const monthTitle = MONTHS_NOM[month] + ' ' + year;
+
+        const firstDay = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const startOffset = (firstDay.getDay() + 6) % 7; // Пн = 0 ... Вс = 6
+
+        // СТРОГО: только «Подтверждено» и «Выходной» за отображаемый месяц
+        const calendarMonthEvents = sortChronologically(
+          getCalendarEvents().filter(function (e) {
+            return e.date && e.date.indexOf(monthKey) === 0;
+          })
+        );
+
+        const byDate = Object.create(null);
+        for (let i = 0; i < calendarMonthEvents.length; i++) {
+          const ev = calendarMonthEvents[i];
+          if (!byDate[ev.date]) byDate[ev.date] = [];
+          byDate[ev.date].push(ev);
+        }
+
+        let cellsHtml = '';
+        for (let empty = 0; empty < startOffset; empty++) {
+          cellsHtml += '<div></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const iso = monthKey + '-' + String(day).padStart(2, '0');
+          const dayEvs = byDate[iso] || [];
+          const hasDayOff = dayEvs.some(function (e) { return e.type === 'dayoff'; });
+          const confirmedCount = dayEvs.filter(function (e) { return e.type === 'shoot' && e.status === 'confirmed'; }).length;
+
+          // В ячейках ТОЛЬКО синие точки для «Подтверждено» и серая штриховка для «Выходной»
+          const dotsCount = Math.min(confirmedCount, 4);
+          let dotsHtml = '<div class="cal-dots">';
+          for (let d = 0; d < dotsCount; d++) {
+            dotsHtml += '<span class="cal-dot dot-confirmed"></span>';
+          }
+          dotsHtml += '</div>';
+
+          let cls = 'cal-cell';
+          if (hasDayOff) cls += ' is-dayoff';
+          if (iso === todayStr) cls += ' is-today';
+          if (iso === state.selectedDate) cls += ' is-selected';
+
+          cellsHtml +=
+            '<button type="button" class="' + cls + '" data-cal-day="' + iso + '" aria-label="' + formatDateRu(iso, false) + '">' +
+              '<span class="cal-day-num">' + day + '</span>' +
+              dotsHtml +
+            '</button>';
+        }
+
+        const isMonthMode = state.calListMode === 'month';
+        const listEvents = isMonthMode
+          ? calendarMonthEvents
+          : sortChronologically(
+              getCalendarEvents().filter(function (e) { return e.date === state.selectedDate; })
+            );
+
+        const countText = listEvents.length + ' ' + pluralize(listEvents.length, ['событие', 'события', 'событий']);
+        const listHeading = isMonthMode
+          ? ('План на ' + MONTHS_NOM[month].toLowerCase())
+          : ('События · ' + formatDateWithWeekday(state.selectedDate));
+
+        const listHtml = listEvents.length > 0
+          ? listEvents.map(function (ev) {
+              return renderCalendarEventCard(ev, ev.date === state.selectedDate, todayStr);
+            }).join('')
+          : '<div class="empty-state">' +
+              '<div class="empty-icon">' +
+                '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<rect x="3" y="4" width="18" height="18" rx="2"></rect>' +
+                  '<line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>' +
+                '</svg>' +
+              '</div>' +
+              '<p class="empty-title">' + (isMonthMode ? 'На этот месяц пока свободно' : 'Этот день свободен') + '</p>' +
+              '<p class="empty-desc">Добавьте подтверждённую съёмку или закройте дату как выходной.</p>' +
+            '</div>';
+
+        container.innerHTML =
+          '<section class="card">' +
+            '<div class="cal-header">' +
+              '<div class="cal-month-nav">' +
+                '<button id="cal-prev" type="button" class="icon-btn" aria-label="Предыдущий месяц">' +
+                  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
+                '</button>' +
+                '<h2 class="cal-month-title">' + monthTitle + '</h2>' +
+                '<button id="cal-next" type="button" class="icon-btn" aria-label="Следующий месяц">' +
+                  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+                '</button>' +
+              '</div>' +
+              '<button id="cal-today" type="button" class="btn-today">Сегодня</button>' +
+            '</div>' +
+
+            '<div class="cal-weekdays">' +
+              WEEKDAYS_HEADER.map(function (wd, idx) {
+                return '<div class="cal-wd' + (idx >= 5 ? ' weekend' : '') + '">' + wd + '</div>';
+              }).join('') +
+            '</div>' +
+
+            '<div class="cal-grid">' + cellsHtml + '</div>' +
+
+            '<div class="cal-legend">' +
+              '<span class="legend-item"><span class="cal-dot dot-confirmed"></span>Подтверждено</span>' +
+              '<span class="legend-item"><span class="legend-hatch"></span>Выходной</span>' +
+            '</div>' +
+          '</section>' +
+
+          '<section class="quick-bar">' +
+            '<div class="quick-date-wrap">' +
+              '<p class="quick-date-label">Выбранная дата</p>' +
+              '<p class="quick-date-value">' +
+                formatDateWithWeekday(state.selectedDate) +
+                (state.selectedDate === todayStr ? '<span class="quick-date-today">· сегодня</span>' : '') +
+              '</p>' +
+            '</div>' +
+            '<div class="quick-actions">' +
+              '<button id="quick-shoot" type="button" class="btn-primary-sm">+ Съёмка</button>' +
+              '<button id="quick-dayoff" type="button" class="btn-secondary">Выходной</button>' +
+            '</div>' +
+          '</section>' +
+
+          '<section class="stack">' +
+            '<div class="section-head">' +
+              '<div>' +
+                '<h3 class="section-title">' + listHeading + '</h3>' +
+                '<p class="section-sub">' + countText + '</p>' +
+              '</div>' +
+              '<div class="segmented">' +
+                '<button type="button" class="segmented-btn' + (isMonthMode ? ' active' : '') + '" data-cal-mode="month">Весь месяц</button>' +
+                '<button type="button" class="segmented-btn' + (!isMonthMode ? ' active' : '') + '" data-cal-mode="day">День</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="stack">' + listHtml + '</div>' +
+          '</section>';
+
+        // Навигация по месяцам
+        document.getElementById('cal-prev').onclick = function () {
+          if (state.viewMonth === 0) { state.viewMonth = 11; state.viewYear--; }
+          else state.viewMonth--;
+          syncSelectedDateToMonth();
+          renderApp();
+        };
+
+        document.getElementById('cal-next').onclick = function () {
+          if (state.viewMonth === 11) { state.viewMonth = 0; state.viewYear++; }
+          else state.viewMonth++;
+          syncSelectedDateToMonth();
+          renderApp();
+        };
+
+        document.getElementById('cal-today').onclick = function () {
+          const t = new Date();
+          state.viewYear = t.getFullYear();
+          state.viewMonth = t.getMonth();
+          state.selectedDate = formatLocalDate(t);
+          renderApp({ scrollToSelected: true });
+        };
+
+        // Быстрые кнопки добавления на выбранную дату
+        document.getElementById('quick-shoot').onclick = function () {
+          openShootModal(null, state.selectedDate);
+        };
+        document.getElementById('quick-dayoff').onclick = function () {
+          openDayOffModal(null, state.selectedDate);
+        };
+
+        // Переключатель «Весь месяц / День»
+        container.querySelectorAll('[data-cal-mode]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            state.calListMode = btn.getAttribute('data-cal-mode');
+            renderApp();
+          });
+        });
+
+        // Клик по дате в сетке: режим «Весь месяц» остаётся активным, подсвечиваем и прокручиваем
+        container.querySelectorAll('[data-cal-day]').forEach(function (cell) {
+          cell.addEventListener('click', function () {
+            state.selectedDate = cell.getAttribute('data-cal-day');
+            renderApp({ scrollToSelected: state.calListMode === 'month' });
+          });
+        });
+
+        bindCardOpeners(container);
+
+        if (opts.scrollToSelected && state.calListMode === 'month') {
+          requestAnimationFrame(function () {
+            const firstMatch = container.querySelector('[data-event-date="' + state.selectedDate + '"]');
+            if (firstMatch && typeof firstMatch.scrollIntoView === 'function') {
+              firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          });
+        }
+      }
+
+      function syncSelectedDateToMonth() {
+        const todayStr = getTodayStr();
+        const key = getMonthKey(state.viewYear, state.viewMonth);
+        if (todayStr.indexOf(key) === 0) {
+          state.selectedDate = todayStr;
+        } else if (state.selectedDate.indexOf(key) !== 0) {
+          state.selectedDate = key + '-01';
+        }
+      }
+
+      function renderCalendarEventCard(ev, isHighlighted, todayStr) {
+        const dt = parseLocalDate(ev.date);
+        const dayNum = dt ? dt.getDate() : '—';
+        const wd = dt ? WEEKDAYS_JS[dt.getDay()] : '';
+        const isDayOff = ev.type === 'dayoff';
+        const isToday = ev.date === todayStr;
+
+        const timeLabel = isDayOff
+          ? 'Весь день'
+          : (ev.startTime ? (ev.startTime + (ev.endTime ? '–' + ev.endTime : '')) : 'Время не указано');
+
+        let cardCls = 'event-card';
+        if (isDayOff) cardCls += ' is-dayoff-card';
+        if (isHighlighted) cardCls += ' is-highlighted';
+
+        let badgeCls = 'date-badge';
+        if (!isHighlighted && isToday) badgeCls += ' is-today-badge';
+        else if (!isHighlighted && isDayOff) badgeCls += ' is-dayoff-badge';
+
+        let paymentHtml = '';
+        if (!isDayOff) {
+          const fin = calcFinance(ev);
+          if (fin.total > 0 && fin.remaining > 0) {
+            paymentHtml = '<span class="price-hint">ост. ' + formatRub(fin.remaining) + '</span>';
+          } else if (fin.total > 0 && fin.remaining === 0) {
+            paymentHtml = '<span class="price-hint paid">Оплачено</span>';
+          }
+        }
+
+        const pillHtml = isDayOff
+          ? '<span class="pill pill-dayoff">Выходной</span>'
+          : '<span class="pill pill-confirmed">Подтверждено</span>';
+
+        const subLine = (!isDayOff && ev.location)
+          ? '<div class="event-meta">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">' +
+                '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>' +
+              '</svg>' +
+              '<span>' + escapeHtml(ev.location) + '</span>' +
+            '</div>'
+          : '';
+
+        return (
+          '<article class="' + cardCls + '" data-open-id="' + ev.id + '" data-event-date="' + ev.date + '">' +
+            '<div class="' + badgeCls + '">' +
+              '<span class="date-badge-num">' + dayNum + '</span>' +
+              '<span class="date-badge-wd">' + wd + '</span>' +
+            '</div>' +
+            '<div class="event-body">' +
+              '<div class="event-time' + (isDayOff ? ' muted' : '') + '">' +
+                '<span>' + escapeHtml(timeLabel) + '</span>' +
+                (isToday ? '<span style="color:var(--accent);font-size:10.5px">· сегодня</span>' : '') +
+              '</div>' +
+              '<h4 class="event-title">' + escapeHtml(ev.title || 'Выходной') + '</h4>' +
+              subLine +
+            '</div>' +
+            '<div class="event-right">' +
+              pillHtml +
+              paymentHtml +
+            '</div>' +
+          '</article>'
+        );
+      }
+
+      /* ======================================================================
+         10. ВКЛАДКА 2: В ОБРАБОТКЕ (СТРОГО ТОЛЬКО СТАТУС «В ОБРАБОТКЕ»)
+         ====================================================================== */
+      function renderEditingTab(container) {
+        const queue = state.events
+          .filter(function (e) { return e.type === 'shoot' && e.status === 'editing'; })
+          .sort(function (a, b) {
+            if (!a.deadline && !b.deadline) return (a.date || '').localeCompare(b.date || '');
+            if (!a.deadline) return 1;
+            if (!b.deadline) return -1;
+            return a.deadline.localeCompare(b.deadline);
+          });
+
+        if (queue.length === 0) {
+          container.innerHTML =
+            '<div class="empty-state" style="margin-top:8px">' +
+              '<div class="empty-icon" style="background:var(--delivered-bg);color:var(--delivered-dark)">' +
+                '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' +
+                '</svg>' +
+              '</div>' +
+              '<p class="empty-title">Очередь обработки пуста</p>' +
+              '<p class="empty-desc">Все отснятые заказы уже отданы и находятся во вкладке «Архив».</p>' +
+            '</div>';
+          return;
+        }
+
+        const urgentCount = queue.filter(function (ev) {
+          const diff = getDaysDiffFromToday(ev.deadline);
+          return diff !== null && diff <= 2;
+        }).length;
+
+        const cardsHtml = queue.map(function (ev) {
+          const diff = getDaysDiffFromToday(ev.deadline);
+          const isOverdue = diff !== null && diff < 0;
+          const isTodayDl = diff === 0;
+          const isSoon = diff !== null && diff > 0 && diff <= 2;
+
+          let dlLabel = 'Без дедлайна';
+          let dlPillCls = 'pill-neutral';
+          if (diff !== null) {
+            if (isOverdue) {
+              dlLabel = 'Просрочено на ' + Math.abs(diff) + ' дн.';
+              dlPillCls = 'pill-danger';
+            } else if (isTodayDl) {
+              dlLabel = 'Сегодня дедлайн';
+              dlPillCls = 'pill-danger';
+            } else if (isSoon) {
+              dlLabel = 'Осталось ' + diff + ' дн.';
+              dlPillCls = 'pill-editing';
+            } else {
+              dlLabel = 'Осталось ' + diff + ' дн.';
+              dlPillCls = 'pill-neutral';
+            }
+          }
+
+          let cardCls = 'editing-card';
+          if (isOverdue || isTodayDl) cardCls += ' is-overdue';
+          else if (isSoon) cardCls += ' is-urgent';
+
+          const fin = calcFinance(ev);
+
+          return (
+            '<article class="' + cardCls + '">' +
+              '<div class="editing-card-top" data-open-id="' + ev.id + '">' +
+                '<div class="editing-badges">' +
+                  '<span class="pill pill-editing">В обработке</span>' +
+                  '<span class="pill ' + dlPillCls + '">' + dlLabel + '</span>' +
+                  (ev.deadline ? '<span class="deadline-date-note">до ' + formatDateRu(ev.deadline, false) + '</span>' : '') +
+                '</div>' +
+
+                '<h3 class="editing-title">' + escapeHtml(ev.title) + '</h3>' +
+
+                '<div class="editing-details">' +
+                  '<div class="editing-detail-row">' +
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>' +
+                    '<span>Дата съёмки: ' + formatDateRu(ev.date, true) + '</span>' +
+                  '</div>' +
+                  (ev.location
+                    ? '<div class="editing-detail-row">' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>' +
+                        '<span>' + escapeHtml(ev.location) + '</span>' +
+                      '</div>'
+                    : '') +
+                '</div>' +
+
+                (ev.contact
+                  ? '<div class="contact-row">' +
+                      '<span class="contact-text">' + escapeHtml(ev.contact) + '</span>' +
+                      '<button type="button" class="btn-copy-mini" data-copy-contact="' + escapeHtml(ev.contact) + '">' +
+                        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>' +
+                        '<span>Копировать</span>' +
+                      '</button>' +
+                    '</div>'
+                  : '') +
+
+                (fin.remaining > 0
+                  ? '<div class="editing-balance-row"><span>Остаток оплаты</span><strong>' + formatRub(fin.remaining) + '</strong></div>'
+                  : '') +
+              '</div>' +
+
+              '<div class="editing-card-footer">' +
+                '<button type="button" class="btn-deliver-outline" data-deliver-id="' + ev.id + '">' +
+                  '<svg class="icon-unchecked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<circle cx="12" cy="12" r="9"></circle>' +
+                  '</svg>' +
+                  '<svg class="icon-checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<circle cx="12" cy="12" r="9"></circle>' +
+                    '<polyline points="8.5 12.5 11 15 16 9.5"></polyline>' +
+                  '</svg>' +
+                  '<span>Отдано</span>' +
+                '</button>' +
+              '</div>' +
+            '</article>'
+          );
+        }).join('');
+
+        container.innerHTML =
+          '<section class="stats-grid-2">' +
+            '<div class="stat-box">' +
+              '<p class="stat-label" style="color:var(--editing)">В обработке</p>' +
+              '<p class="stat-val">' + queue.length + '</p>' +
+            '</div>' +
+            '<div class="stat-box' + (urgentCount > 0 ? ' alert' : '') + '">' +
+              '<p class="stat-label">Срочные (≤ 2 дн.)</p>' +
+              '<p class="stat-val">' + urgentCount + '</p>' +
+            '</div>' +
+          '</section>' +
+          '<div class="stack">' + cardsHtml + '</div>';
+
+        // Копирование контакта
+        container.querySelectorAll('[data-copy-contact]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            copyToClipboard(btn.getAttribute('data-copy-contact'), 'Контакт скопирован');
+          });
+        });
+
+        // Перевод в «Отдано» (перенос в Архив) с Undo на 5 секунд
+        container.querySelectorAll('[data-deliver-id]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-deliver-id');
+            const ev = state.events.find(function (item) { return item.id === id; });
+            if (!ev) return;
+            ev.status = 'delivered';
+            saveEvents();
+            renderApp();
+            showToast('Перенесено в Архив', 'default', {
+              label: 'Отменить',
+              onClick: function () {
+                ev.status = 'editing';
+                saveEvents();
+                renderApp();
+              },
+            }, 5000);
+          });
+        });
+
+        bindCardOpeners(container);
+      }
+
+      /* ======================================================================
+         11. ВКЛАДКА 3: ФИНАНСЫ (АНАЛИТИКА И БЭКАП, БЕЗ СПИСКА КАРТОЧЕК СЪЁМОК)
+         ====================================================================== */
+      function renderFinanceTab(container) {
+        const isMonth = state.financePeriodMode === 'month';
+        const periodKey = getMonthKey(state.financeYear, state.financeMonth);
+        const periodLabel = MONTHS_NOM[state.financeMonth] + ' ' + state.financeYear;
+
+        // Все съёмки периода (независимо от статуса — для полного учёта доходов)
+        const periodShoots = state.events.filter(function (e) {
+          if (e.type !== 'shoot') return false;
+          if (!isMonth) return true;
+          return e.date && e.date.indexOf(periodKey) === 0;
+        });
+
+        const totals = { count: 0, total: 0, paid: 0, remaining: 0 };
+        const byStatus = {
+          confirmed: { count: 0, total: 0, remaining: 0 },
+          editing:   { count: 0, total: 0, remaining: 0 },
+          delivered: { count: 0, total: 0, remaining: 0 },
+        };
+
+        for (let i = 0; i < periodShoots.length; i++) {
+          const ev = periodShoots[i];
+          const f = calcFinance(ev);
+          totals.count++;
+          totals.total += f.total;
+          totals.paid += f.paid;
+          totals.remaining += f.remaining;
+
+          const bucket = byStatus[ev.status] || byStatus.confirmed;
+          bucket.count++;
+          bucket.total += f.total;
+          bucket.remaining += f.remaining;
+        }
+
+        const paidPct = totals.total > 0 ? Math.round((totals.paid / totals.total) * 100) : 0;
+        const hasDemo = state.events.some(function (e) { return e.isDemo; });
+
+        const breakdownItems = [
+          {
+            key: 'confirmed',
+            label: 'Подтверждено',
+            pillCls: 'pill-confirmed',
+            targetTab: 'calendar',
+            hint: 'Открыть в Календаре',
+            data: byStatus.confirmed,
+          },
+          {
+            key: 'editing',
+            label: 'В обработке',
+            pillCls: 'pill-editing',
+            targetTab: 'editing',
+            hint: 'Открыть в Обработке',
+            data: byStatus.editing,
+          },
+          {
+            key: 'delivered',
+            label: 'Отдано',
+            pillCls: 'pill-delivered',
+            targetTab: 'archive',
+            hint: 'Открыть в Архиве',
+            data: byStatus.delivered,
+          },
+        ];
+
+        container.innerHTML =
+          '<section class="card" style="display:flex;flex-direction:column;gap:12px">' +
+            '<div class="section-head" style="padding:0">' +
+              '<h2 class="section-title">Финансовая сводка</h2>' +
+              '<div class="segmented">' +
+                '<button type="button" class="segmented-btn' + (isMonth ? ' active' : '') + '" data-fin-period="month">За месяц</button>' +
+                '<button type="button" class="segmented-btn' + (!isMonth ? ' active' : '') + '" data-fin-period="all">Всё время</button>' +
+              '</div>' +
+            '</div>' +
+
+            (isMonth
+              ? '<div class="month-bar">' +
+                  '<button id="fin-prev" type="button" class="icon-btn" aria-label="Предыдущий месяц">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
+                  '</button>' +
+                  '<span class="month-bar-label">' + periodLabel + '</span>' +
+                  '<button id="fin-next" type="button" class="icon-btn" aria-label="Следующий месяц">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+                  '</button>' +
+                '</div>'
+              : '') +
+
+            '<div class="kpi-grid-3">' +
+              '<div class="kpi-card kpi-total">' +
+                '<p class="kpi-label">Всего</p>' +
+                '<p class="kpi-val">' + formatRub(totals.total) + '</p>' +
+              '</div>' +
+              '<div class="kpi-card kpi-paid">' +
+                '<p class="kpi-label">Получено</p>' +
+                '<p class="kpi-val">' + formatRub(totals.paid) + '</p>' +
+              '</div>' +
+              '<div class="kpi-card kpi-rem">' +
+                '<p class="kpi-label">Остаток</p>' +
+                '<p class="kpi-val">' + formatRub(totals.remaining) + '</p>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="progress-block">' +
+              '<div class="progress-meta">' +
+                '<span>Оплачено по ' + totals.count + ' ' + pluralize(totals.count, ['съёмке', 'съёмкам', 'съёмкам']) + '</span>' +
+                '<strong>' + paidPct + '%</strong>' +
+              '</div>' +
+              '<div class="progress-track"><div class="progress-fill" style="width:' + paidPct + '%"></div></div>' +
+            '</div>' +
+          '</section>' +
+
+          '<section class="card" style="display:flex;flex-direction:column;gap:10px">' +
+            '<div>' +
+              '<h3 class="section-title" style="font-size:14.5px">Разбивка по статусам</h3>' +
+              '<p class="section-sub">Нажмите на строку, чтобы перейти к нужной вкладке</p>' +
+            '</div>' +
+            '<div class="breakdown-list">' +
+              breakdownItems.map(function (item) {
+                const cnt = item.data.count;
+                const remText = item.data.remaining > 0
+                  ? ('ост. ' + formatRub(item.data.remaining))
+                  : (cnt > 0 ? 'Оплачено' : '—');
+                return (
+                  '<button type="button" class="breakdown-row" data-go-tab="' + item.targetTab + '">' +
+                    '<div class="breakdown-left">' +
+                      '<div class="breakdown-title-row">' +
+                        '<span class="pill ' + item.pillCls + '">' + item.label + '</span>' +
+                        '<span class="breakdown-count">' + cnt + ' ' + pluralize(cnt, ['съёмка', 'съёмки', 'съёмок']) + '</span>' +
+                      '</div>' +
+                      '<span class="breakdown-hint">' + item.hint + '</span>' +
+                    '</div>' +
+                    '<div class="breakdown-right">' +
+                      '<div class="breakdown-nums">' +
+                        '<span class="breakdown-total">' + formatRub(item.data.total) + '</span>' +
+                        '<span class="breakdown-rem' + (item.data.remaining === 0 ? ' zero' : '') + '">' + remText + '</span>' +
+                      '</div>' +
+                      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+                    '</div>' +
+                  '</button>'
+                );
+              }).join('') +
+            '</div>' +
+          '</section>' +
+
+          '<section class="card" style="display:flex;flex-direction:column;gap:10px">' +
+            '<div>' +
+              '<h3 class="section-title" style="font-size:14.5px">Данные и резервная копия</h3>' +
+              '<p class="section-sub">Записи хранятся локально на телефоне. Экспортируйте JSON для бэкапа.</p>' +
+            '</div>' +
+            '<div class="backup-grid">' +
+              '<button id="btn-export-json" type="button" class="btn-primary" style="min-height:42px;font-size:13px">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>' +
+                '<span>Экспорт JSON</span>' +
+              '</button>' +
+              '<button id="btn-import-json" type="button" class="btn-secondary" style="min-height:42px;font-size:13px">' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>' +
+                '<span>Импорт JSON</span>' +
+              '</button>' +
+            '</div>' +
+            '<div class="danger-actions-row">' +
+              (hasDemo
+                ? '<button id="btn-clear-demo" type="button" class="btn-outline-orange" style="flex:1">Очистить демо-данные</button>'
+                : '') +
+              '<button id="btn-clear-all" type="button" class="btn-danger-soft" style="min-height:40px;font-size:12.5px;flex:1">Очистить всё</button>' +
+            '</div>' +
+          '</section>';
+
+        // Переключатель периода
+        container.querySelectorAll('[data-fin-period]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            state.financePeriodMode = btn.getAttribute('data-fin-period');
+            renderApp();
+          });
+        });
+
+        const prevBtn = document.getElementById('fin-prev');
+        if (prevBtn) {
+          prevBtn.onclick = function () {
+            if (state.financeMonth === 0) { state.financeMonth = 11; state.financeYear--; }
+            else state.financeMonth--;
+            renderApp();
+          };
+        }
+
+        const nextBtn = document.getElementById('fin-next');
+        if (nextBtn) {
+          nextBtn.onclick = function () {
+            if (state.financeMonth === 11) { state.financeMonth = 0; state.financeYear++; }
+            else state.financeMonth++;
+            renderApp();
+          };
+        }
+
+        // Переходы по строкам разбивки
+        container.querySelectorAll('[data-go-tab]').forEach(function (row) {
+          row.addEventListener('click', function () {
+            const target = row.getAttribute('data-go-tab');
+            if (target === 'calendar' && isMonth) {
+              state.viewYear = state.financeYear;
+              state.viewMonth = state.financeMonth;
+              syncSelectedDateToMonth();
+            }
+            switchTab(target);
+          });
+        });
+
+        // Бэкап и очистка
+        document.getElementById('btn-export-json').onclick = exportJsonBackup;
+        document.getElementById('btn-import-json').onclick = function () {
+          const inp = document.getElementById('json-import-input');
+          inp.value = '';
+          inp.click();
+        };
+
+        const clearDemoBtn = document.getElementById('btn-clear-demo');
+        if (clearDemoBtn) {
+          clearDemoBtn.onclick = function () {
+            openConfirm({
+              title: 'Очистить демо-данные?',
+              message: 'Все тестовые записи будут удалены. Ваши собственные съёмки и выходные сохранятся.',
+              confirmText: 'Очистить',
+              danger: true,
+              onConfirm: function () {
+                state.events = state.events.filter(function (e) { return !e.isDemo; });
+                saveEvents();
+                renderApp();
+                showToast('Демо-данные удалены');
+              },
+            });
+          };
+        }
+
+        document.getElementById('btn-clear-all').onclick = function () {
+          openConfirm({
+            title: 'Очистить все записи?',
+            message: 'Будут безвозвратно удалены все съёмки и выходные. Рекомендуем сначала сделать «Экспорт JSON».',
+            confirmText: 'Удалить всё',
+            danger: true,
+            onConfirm: function () {
+              state.events = [];
+              saveEvents();
+              renderApp();
+              showToast('Все данные очищены');
+            },
+          });
+        };
+      }
+
+      /* ======================================================================
+         12. ВКЛАДКА 4: АРХИВ (СТРОГО ТОЛЬКО СТАТУС «ОТДАНО», ГРУППИРОВКА)
+         ====================================================================== */
+      function renderArchiveTab(container) {
+        const allDelivered = state.events.filter(function (e) {
+          return e.type === 'shoot' && e.status === 'delivered';
+        });
+
+        const payChips = [
+          { id: 'all', label: 'Все' },
+          { id: 'paid', label: 'Оплачено' },
+          { id: 'unpaid', label: 'Есть остаток' },
+        ];
+
+        container.innerHTML =
+          '<div class="section-head">' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<h2 class="section-title">Архив съёмок</h2>' +
+              '<span class="pill pill-delivered">' + allDelivered.length + '</span>' +
+            '</div>' +
+            '<span class="section-sub">Сначала новые</span>' +
+          '</div>' +
+
+          (allDelivered.length > 0
+            ? '<div class="search-wrap">' +
+                '<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>' +
+                '<input id="archive-search-input" type="search" class="search-input" value="' + escapeHtml(state.archiveSearch) + '" placeholder="Поиск по названию, локации, клиенту..." />' +
+              '</div>' +
+              '<div class="chips-scroll">' +
+                payChips.map(function (c) {
+                  return '<button type="button" class="filter-chip' + (state.archivePayFilter === c.id ? ' active' : '') + '" data-arch-pay="' + c.id + '">' + c.label + '</button>';
+                }).join('') +
+              '</div>'
+            : '') +
+
+          '<div id="archive-groups-list" class="stack"></div>';
+
+        renderArchiveListOnly();
+
+        const searchEl = document.getElementById('archive-search-input');
+        if (searchEl) {
+          searchEl.addEventListener('input', function (e) {
+            state.archiveSearch = e.target.value;
+            renderArchiveListOnly();
+          });
+        }
+
+        container.querySelectorAll('[data-arch-pay]').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            state.archivePayFilter = chip.getAttribute('data-arch-pay');
+            container.querySelectorAll('[data-arch-pay]').forEach(function (c) {
+              c.classList.toggle('active', c.getAttribute('data-arch-pay') === state.archivePayFilter);
+            });
+            renderArchiveListOnly();
+          });
+        });
+      }
+
+      function renderArchiveListOnly() {
+        const listEl = document.getElementById('archive-groups-list');
+        if (!listEl) return;
+
+        const allDelivered = state.events
+          .filter(function (e) { return e.type === 'shoot' && e.status === 'delivered'; })
+          .sort(function (a, b) {
+            const cmp = (b.date || '').localeCompare(a.date || '');
+            if (cmp !== 0) return cmp;
+            return (b.startTime || '').localeCompare(a.startTime || '');
+          });
+
+        if (allDelivered.length === 0) {
+          listEl.innerHTML =
+            '<div class="empty-state" style="margin-top:6px">' +
+              '<div class="empty-icon">' +
+                '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5" rx="1"></rect><line x1="10" y1="12" x2="14" y2="12"></line>' +
+                '</svg>' +
+              '</div>' +
+              '<p class="empty-title">Архив пока пуст</p>' +
+              '<p class="empty-desc">Сюда попадают все съёмки после перевода в статус «Отдано».</p>' +
+            '</div>';
+          return;
+        }
+
+        const q = state.archiveSearch.trim().toLowerCase();
+        const filtered = allDelivered.filter(function (ev) {
+          const fin = calcFinance(ev);
+          if (state.archivePayFilter === 'paid' && fin.remaining > 0) return false;
+          if (state.archivePayFilter === 'unpaid' && fin.remaining <= 0) return false;
+          if (q) {
+            const hay = ((ev.title || '') + ' ' + (ev.location || '') + ' ' + (ev.contact || '') + ' ' + (ev.notes || '')).toLowerCase();
+            if (hay.indexOf(q) === -1) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          listEl.innerHTML =
+            '<div class="empty-state" style="padding:22px">' +
+              '<p class="empty-desc">По вашему запросу отданных съёмок не найдено.</p>' +
+            '</div>';
+          return;
+        }
+
+        // Группировка по «Месяц Год»
+        const groupsOrder = [];
+        const groupsMap = Object.create(null);
+        for (let i = 0; i < filtered.length; i++) {
+          const ev = filtered[i];
+          const ym = (ev.date && ev.date.length >= 7) ? ev.date.slice(0, 7) : 'other';
+          if (!groupsMap[ym]) {
+            groupsMap[ym] = [];
+            groupsOrder.push(ym);
+          }
+          groupsMap[ym].push(ev);
+        }
+
+        listEl.innerHTML = groupsOrder.map(function (ym) {
+          const items = groupsMap[ym];
+          let groupTitle = 'Без даты';
+          if (ym !== 'other') {
+            const parts = ym.split('-').map(Number);
+            groupTitle = MONTHS_NOM[parts[1] - 1] + ' ' + parts[0];
+          }
+
+          const cards = items.map(function (ev) {
+            const dt = parseLocalDate(ev.date);
+            const dayNum = dt ? dt.getDate() : '—';
+            const wd = dt ? WEEKDAYS_JS[dt.getDay()] : '';
+            const fin = calcFinance(ev);
+
+            const payStatusHtml = fin.remaining > 0
+              ? '<span class="pill pill-orange">Остаток: ' + formatRub(fin.remaining) + '</span>'
+              : '<span class="pill pill-delivered">Оплачено полностью</span>';
+
+            return (
+              '<article class="archive-card" data-open-id="' + ev.id + '">' +
+                '<div class="archive-card-top">' +
+                  '<div class="date-badge">' +
+                    '<span class="date-badge-num">' + dayNum + '</span>' +
+                    '<span class="date-badge-wd">' + wd + '</span>' +
+                  '</div>' +
+                  '<div class="archive-card-body">' +
+                    '<div class="archive-card-head">' +
+                      '<h4 class="event-title" style="white-space:normal;line-height:1.3">' + escapeHtml(ev.title) + '</h4>' +
+                      '<span class="pill pill-delivered" style="flex-shrink:0">Отдано</span>' +
+                    '</div>' +
+                    (ev.location
+                      ? '<div class="event-meta">' +
+                          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>' +
+                          '<span>' + escapeHtml(ev.location) + '</span>' +
+                        '</div>'
+                      : '') +
+                    (ev.contact
+                      ? '<div class="event-meta">' +
+                          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' +
+                          '<span>' + escapeHtml(ev.contact) + '</span>' +
+                        '</div>'
+                      : '') +
+                  '</div>' +
+                '</div>' +
+                '<div class="archive-card-footer">' +
+                  '<strong style="font-size:14.5px">' + formatRub(fin.total) + '</strong>' +
+                  payStatusHtml +
+                '</div>' +
+              '</article>'
+            );
+          }).join('');
+
+          return (
+            '<div class="stack">' +
+              '<div class="archive-group-head">' +
+                '<h3 class="archive-group-title">' + groupTitle + '</h3>' +
+                '<span class="section-sub">' + items.length + '</span>' +
+              '</div>' +
+              cards +
+            '</div>'
+          );
+        }).join('');
+
+        bindCardOpeners(listEl);
+      }
+
+      /* Универсальная привязка открытия карточек */
+      function bindCardOpeners(rootEl) {
+        rootEl.querySelectorAll('[data-open-id]').forEach(function (el) {
+          el.addEventListener('click', function (e) {
+            if (e.target.closest('button')) return;
+            const id = el.getAttribute('data-open-id');
+            const ev = state.events.find(function (item) { return item.id === id; });
+            if (!ev) return;
+            if (ev.type === 'dayoff') openDayOffModal(ev);
+            else openShootModal(ev);
+          });
+        });
+      }
+
+      /* ======================================================================
+         13. ЭКСПОРТ И ИМПОРТ JSON
+         ====================================================================== */
+      function exportJsonBackup() {
+        try {
+          const payload = {
+            app: 'PhotoCalendarPWA',
+            version: 7,
+            exportedAt: new Date().toISOString(),
+            events: state.events,
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'photocalendar-' + getTodayStr() + '.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('Резервная копия JSON сохранена');
+        } catch (err) {
+          showToast('Не удалось выгрузить JSON', 'error');
+        }
+      }
+
+      function handleImportFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            const list = Array.isArray(parsed) ? parsed : (parsed && parsed.events);
+            if (!Array.isArray(list)) {
+              showToast('Неверный формат файла JSON', 'error');
+              return;
+            }
+            const valid = list.filter(function (item) {
+              return item && typeof item === 'object' && item.date;
+            });
+            openConfirm({
+              title: 'Импортировать резервную копию?',
+              message: 'Найдено записей: ' + valid.length + '. Текущий список будет заменён данными из файла.',
+              confirmText: 'Импортировать',
+              onConfirm: function () {
+                state.events = valid.map(function (item) {
+                  const isDayOff = item.type === 'dayoff' || item.type === 'personal';
+                  return Object.assign({}, item, {
+                    id: item.id || generateId(),
+                    type: isDayOff ? 'dayoff' : 'shoot',
+                    title: item.title || (isDayOff ? 'Выходной' : 'Съёмка'),
+                    status: isDayOff ? undefined : (['confirmed', 'editing', 'delivered'].indexOf(item.status) !== -1 ? item.status : 'confirmed'),
+                  });
+                });
+                saveEvents();
+                renderApp();
+                showToast('Импортировано записей: ' + valid.length);
+              },
+            });
+          } catch (err) {
+            showToast('Ошибка чтения JSON-файла', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      /* ======================================================================
+         14. МОДАЛКА 1: КАРТОЧКА СЪЁМКИ (СОЗДАНИЕ / РЕДАКТИРОВАНИЕ)
+         ====================================================================== */
+      function openShootModal(existing, presetDate) {
+        const isEdit = Boolean(existing);
+        const prevStatus = isEdit ? existing.status : null;
+        const baseDate = presetDate || state.selectedDate || getTodayStr();
+        const ev = existing ? Object.assign({}, existing) : {
+          id: null,
+          type: 'shoot',
+          title: '',
+          status: 'confirmed',
+          date: baseDate,
+          startTime: '14:00',
+          endTime: '16:00',
+          location: '',
+          contact: '',
+          totalPrice: '',
+          prepayment: '',
+          isPaidFull: false,
+          deadline: addDaysLocal(baseDate, 7),
+          notes: '',
+        };
+
+        const root = document.getElementById('modal-root');
+        root.classList.remove('hidden');
+
+        root.innerHTML =
+          '<div class="sheet">' +
+            '<div class="sheet-header">' +
+              '<div class="sheet-handle"></div>' +
+              '<div class="sheet-head-row">' +
+                '<div>' +
+                  '<h2 class="sheet-title">' + (isEdit ? 'Редактировать съёмку' : 'Новая съёмка') + '</h2>' +
+                  '<p class="sheet-sub">Статус, расписание, финансы и дедлайн</p>' +
+                '</div>' +
+                '<button id="m-close" type="button" class="icon-btn" aria-label="Закрыть">' +
+                  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+
+            '<form id="shoot-form" class="sheet-body">' +
+              '<div class="field">' +
+                '<span class="field-label">Статус</span>' +
+                '<div class="status-picker">' +
+                  '<button type="button" class="status-opt" data-st="confirmed">Подтверждено</button>' +
+                  '<button type="button" class="status-opt" data-st="editing">В обработке</button>' +
+                  '<button type="button" class="status-opt" data-st="delivered">Отдано</button>' +
+                '</div>' +
+                '<input id="s-status" type="hidden" value="' + escapeHtml(ev.status) + '" />' +
+              '</div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="s-title">Название / формат *</label>' +
+                '<input id="s-title" type="text" class="input" required value="' + escapeHtml(ev.title) + '" placeholder="Например: Репортаж с мероприятия" />' +
+                '<div class="format-chips">' +
+                  FORMAT_CHIPS.map(function (ch) {
+                    return '<button type="button" class="mini-chip" data-fchip="' + ch + '">' + ch + '</button>';
+                  }).join('') +
+                '</div>' +
+              '</div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="s-date">Дата съёмки *</label>' +
+                '<input id="s-date" type="date" class="input" required value="' + escapeHtml(ev.date) + '" />' +
+              '</div>' +
+
+              '<div class="grid-2">' +
+                '<div class="field">' +
+                  '<label class="field-label" for="s-start">Начало</label>' +
+                  '<input id="s-start" type="time" class="input" value="' + escapeHtml(ev.startTime || '') + '" />' +
+                '</div>' +
+                '<div class="field">' +
+                  '<label class="field-label" for="s-end">Окончание</label>' +
+                  '<input id="s-end" type="time" class="input" value="' + escapeHtml(ev.endTime || '') + '" />' +
+                '</div>' +
+              '</div>' +
+
+              '<div id="s-conflicts" class="conflict-banner hidden"></div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="s-location">Локация</label>' +
+                '<input id="s-location" type="text" class="input" value="' + escapeHtml(ev.location || '') + '" placeholder="Студия, зал или адрес..." />' +
+              '</div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="s-contact">Контакт заказчика</label>' +
+                '<div class="input-with-btn">' +
+                  '<input id="s-contact" type="text" class="input" value="' + escapeHtml(ev.contact || '') + '" placeholder="Имя, телефон или @ник" />' +
+                  '<button id="s-copy-btn" type="button" class="btn-secondary" style="min-height:44px" title="Копировать контакт">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>' +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="finance-panel">' +
+                '<div class="finance-panel-head">' +
+                  '<span>Финансы</span>' +
+                  '<span id="s-rem-label" style="color:var(--accent-hover)">Остаток: 0 ₽</span>' +
+                '</div>' +
+                '<div class="grid-2">' +
+                  '<div class="field">' +
+                    '<label class="field-label" for="s-total">Стоимость (₽)</label>' +
+                    '<input id="s-total" type="number" min="0" step="500" inputmode="numeric" class="input" style="background:#FFFFFF" value="' + (ev.totalPrice !== '' ? ev.totalPrice : '') + '" placeholder="0" />' +
+                  '</div>' +
+                  '<div class="field">' +
+                    '<label class="field-label" for="s-prepay">Предоплата / Получено (₽)</label>' +
+                    '<input id="s-prepay" type="number" min="0" step="500" inputmode="numeric" class="input" style="background:#FFFFFF" value="' + (ev.prepayment !== '' ? ev.prepayment : '') + '" placeholder="0" />' +
+                  '</div>' +
+                '</div>' +
+                '<button id="s-paid-btn" type="button" class="btn-paid-toggle">' +
+                  '<span id="s-paid-ico"></span>' +
+                  '<span>Оплачено полностью</span>' +
+                '</button>' +
+                '<input id="s-paid-full" type="hidden" value="' + (ev.isPaidFull ? '1' : '0') + '" />' +
+              '</div>' +
+
+              '<div class="field">' +
+                '<div class="deadline-head">' +
+                  '<label class="field-label" for="s-deadline">Дедлайн отдачи фото</label>' +
+                  '<div class="deadline-presets">' +
+                    '<button type="button" class="preset-btn" data-dl-add="3">+3 дн.</button>' +
+                    '<button type="button" class="preset-btn" data-dl-add="7">+7 дн.</button>' +
+                    '<button type="button" class="preset-btn" data-dl-add="14">+14 дн.</button>' +
+                  '</div>' +
+                '</div>' +
+                '<input id="s-deadline" type="date" class="input" value="' + escapeHtml(ev.deadline || '') + '" />' +
+              '</div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="s-notes">Заметки (ТЗ, техника, свет)</label>' +
+                '<textarea id="s-notes" class="input" placeholder="Техника, свет, пожелания клиента...">' + escapeHtml(ev.notes || '') + '</textarea>' +
+              '</div>' +
+            '</form>' +
+
+            '<div class="sheet-footer">' +
+              (isEdit ? '<button id="s-delete" type="button" class="btn-danger-soft">Удалить</button>' : '') +
+              '<button type="submit" form="shoot-form" class="btn-primary" style="flex:1">Сохранить</button>' +
+            '</div>' +
+          '</div>';
+
+        function closeModal() {
+          root.classList.add('hidden');
+          root.innerHTML = '';
+        }
+
+        root.onclick = function (e) { if (e.target === root) closeModal(); };
+        document.getElementById('m-close').onclick = closeModal;
+
+        // Выбор статуса
+        const statusInput = document.getElementById('s-status');
+        function syncStatusBtns() {
+          const val = statusInput.value;
+          root.querySelectorAll('[data-st]').forEach(function (b) {
+            const st = b.getAttribute('data-st');
+            b.className = 'status-opt' + (st === val ? (' active-' + st) : '');
+          });
+        }
+        syncStatusBtns();
+        root.querySelectorAll('[data-st]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            statusInput.value = b.getAttribute('data-st');
+            syncStatusBtns();
+          });
+        });
+
+        // Быстрые чипы форматов
+        const titleInput = document.getElementById('s-title');
+        root.querySelectorAll('[data-fchip]').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            const label = chip.getAttribute('data-fchip');
+            const cur = titleInput.value.trim();
+            if (!cur) titleInput.value = label + ': ';
+            else if (cur.toLowerCase().indexOf(label.toLowerCase()) === -1) titleInput.value = label + ': ' + cur;
+            titleInput.focus();
+          });
+        });
+
+        // Копирование контакта
+        document.getElementById('s-copy-btn').addEventListener('click', function () {
+          const val = document.getElementById('s-contact').value.trim();
+          if (!val) { showToast('Поле контакта пустое'); return; }
+          copyToClipboard(val, 'Контакт скопирован');
+        });
+
+        // Авторасчёт остатка и кнопка «Оплачено полностью»
+        const totalEl = document.getElementById('s-total');
+        const prepayEl = document.getElementById('s-prepay');
+        const paidHidden = document.getElementById('s-paid-full');
+        const paidBtn = document.getElementById('s-paid-btn');
+        const paidIco = document.getElementById('s-paid-ico');
+        const remLabel = document.getElementById('s-rem-label');
+
+        function syncFinanceUI() {
+          const total = Math.max(0, Number(totalEl.value) || 0);
+          const prepay = Math.max(0, Number(prepayEl.value) || 0);
+          const isFull = paidHidden.value === '1';
+          const rem = isFull ? 0 : Math.max(0, total - prepay);
+
+          paidBtn.classList.toggle('is-paid', isFull);
+          paidIco.innerHTML = isFull
+            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg>';
+
+          if (isFull && total > 0) {
+            remLabel.textContent = 'Оплачено полностью';
+            remLabel.style.color = 'var(--delivered-dark)';
+          } else {
+            remLabel.textContent = 'Остаток: ' + formatRub(rem);
+            remLabel.style.color = 'var(--accent-hover)';
+          }
+        }
+
+        paidBtn.addEventListener('click', function () {
+          const next = paidHidden.value !== '1';
+          paidHidden.value = next ? '1' : '0';
+          if (next && totalEl.value) prepayEl.value = totalEl.value;
+          syncFinanceUI();
+        });
+
+        totalEl.addEventListener('input', function () {
+          if (paidHidden.value === '1') prepayEl.value = totalEl.value;
+          syncFinanceUI();
+        });
+
+        prepayEl.addEventListener('input', function () {
+          const t = Number(totalEl.value) || 0;
+          const p = Number(prepayEl.value) || 0;
+          paidHidden.value = (t > 0 && p >= t) ? '1' : '0';
+          syncFinanceUI();
+        });
+        syncFinanceUI();
+
+        // Пресеты дедлайна
+        const dateEl = document.getElementById('s-date');
+        const startEl = document.getElementById('s-start');
+        const endEl = document.getElementById('s-end');
+        const deadlineEl = document.getElementById('s-deadline');
+
+        root.querySelectorAll('[data-dl-add]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const days = Number(btn.getAttribute('data-dl-add'));
+            deadlineEl.value = addDaysLocal(dateEl.value || getTodayStr(), days);
+          });
+        });
+
+        // Проверка пересечений по времени с подтверждёнными съёмками и выходными
+        const conflictsEl = document.getElementById('s-conflicts');
+        function refreshConflicts() {
+          const warnings = detectScheduleConflicts({
+            date: dateEl.value,
+            startTime: startEl.value,
+            endTime: endEl.value,
+            isDayOff: false,
+            excludeId: ev.id,
+          });
+          if (warnings.length > 0) {
+            conflictsEl.classList.remove('hidden');
+            conflictsEl.innerHTML =
+              '<div class="conflict-title">Внимание — пересечение в графике:</div>' +
+              warnings.map(function (w) { return '<div>• ' + escapeHtml(w) + '</div>'; }).join('');
+          } else {
+            conflictsEl.classList.add('hidden');
+            conflictsEl.innerHTML = '';
+          }
+        }
+        dateEl.addEventListener('change', refreshConflicts);
+        startEl.addEventListener('change', refreshConflicts);
+        endEl.addEventListener('change', refreshConflicts);
+        refreshConflicts();
+
+        // Удаление съёмки
+        if (isEdit) {
+          document.getElementById('s-delete').onclick = function () {
+            openConfirm({
+              title: 'Удалить съёмку?',
+              message: 'Запись «' + ev.title + '» будет удалена без возможности восстановления.',
+              confirmText: 'Удалить',
+              danger: true,
+              onConfirm: function () {
+                state.events = state.events.filter(function (item) { return item.id !== ev.id; });
+                saveEvents();
+                closeModal();
+                renderApp();
+                showToast('Съёмка удалена');
+              },
+            });
+          };
+        }
+
+        // Сохранение съёмки
+        document.getElementById('shoot-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          const title = titleInput.value.trim();
+          const date = dateEl.value;
+          if (!title || !date) {
+            showToast('Укажите название и дату съёмки', 'error');
+            return;
+          }
+
+          const newStatus = statusInput.value;
+          const totalPrice = Math.max(0, Number(totalEl.value) || 0);
+          const isPaidFull = paidHidden.value === '1';
+          const prepayment = isPaidFull ? totalPrice : Math.max(0, Number(prepayEl.value) || 0);
+
+          const saved = {
+            id: isEdit ? ev.id : generateId(),
+            type: 'shoot',
+            title: title,
+            status: newStatus,
+            date: date,
+            startTime: startEl.value || '',
+            endTime: endEl.value || '',
+            location: document.getElementById('s-location').value.trim(),
+            contact: document.getElementById('s-contact').value.trim(),
+            totalPrice: totalPrice,
+            prepayment: prepayment,
+            isPaidFull: isPaidFull,
+            deadline: deadlineEl.value || '',
+            notes: document.getElementById('s-notes').value.trim(),
+            isDemo: false,
+          };
+
+          if (isEdit) {
+            const idx = state.events.findIndex(function (item) { return item.id === ev.id; });
+            if (idx !== -1) state.events[idx] = saved;
+          } else {
+            state.events.push(saved);
+          }
+
+          if (newStatus === 'confirmed') {
+            const dt = parseLocalDate(date);
+            if (dt) {
+              state.viewYear = dt.getFullYear();
+              state.viewMonth = dt.getMonth();
+              state.selectedDate = date;
+            }
+          }
+
+          saveEvents();
+          closeModal();
+          renderApp({ scrollToSelected: state.activeTab === 'calendar' && newStatus === 'confirmed' && state.calListMode === 'month' });
+
+          // Информативный тост при смене статуса или создании
+          if (isEdit && prevStatus !== newStatus) {
+            if (newStatus === 'editing') showToast('Перенесено во вкладку «В обработке»');
+            else if (newStatus === 'delivered') showToast('Перенесено в «Архив»');
+            else showToast('Перенесено в «Календарь»');
+          } else if (!isEdit) {
+            if (newStatus === 'editing') showToast('Добавлено во вкладку «В обработке»');
+            else if (newStatus === 'delivered') showToast('Добавлено в «Архив»');
+            else showToast('Съёмка добавлена в «Календарь»');
+          } else {
+            showToast('Изменения сохранены');
+          }
+        });
+      }
+
+      /* ======================================================================
+         15. МОДАЛКА 2: ВЫХОДНОЙ / ЛИЧНОЕ
+         ====================================================================== */
+      function openDayOffModal(existing, presetDate) {
+        const isEdit = Boolean(existing);
+        const ev = existing ? Object.assign({}, existing) : {
+          id: null,
+          type: 'dayoff',
+          title: '',
+          date: presetDate || state.selectedDate || getTodayStr(),
+        };
+
+        const root = document.getElementById('modal-root');
+        root.classList.remove('hidden');
+
+        root.innerHTML =
+          '<div class="sheet">' +
+            '<div class="sheet-header">' +
+              '<div class="sheet-handle"></div>' +
+              '<div class="sheet-head-row">' +
+                '<div>' +
+                  '<h2 class="sheet-title">' + (isEdit ? 'Выходной / Личное' : 'Добавить выходной') + '</h2>' +
+                  '<p class="sheet-sub">День отметится серой штриховкой в календаре</p>' +
+                '</div>' +
+                '<button id="m-close" type="button" class="icon-btn" aria-label="Закрыть">' +
+                  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+
+            '<form id="dayoff-form" class="sheet-body">' +
+              '<div class="field">' +
+                '<label class="field-label" for="d-date">Дата *</label>' +
+                '<input id="d-date" type="date" class="input" required value="' + escapeHtml(ev.date) + '" />' +
+              '</div>' +
+
+              '<div id="d-conflicts" class="conflict-banner hidden"></div>' +
+
+              '<div class="field">' +
+                '<label class="field-label" for="d-title">Подпись (необязательно)</label>' +
+                '<input id="d-title" type="text" class="input" value="' + escapeHtml(ev.title || '') + '" placeholder="Например: Отдых, Личные дела..." />' +
+                '<div class="format-chips">' +
+                  DAYOFF_CHIPS.map(function (ch) {
+                    return '<button type="button" class="mini-chip" data-dchip="' + ch + '">' + ch + '</button>';
+                  }).join('') +
+                '</div>' +
+              '</div>' +
+            '</form>' +
+
+            '<div class="sheet-footer">' +
+              (isEdit ? '<button id="d-delete" type="button" class="btn-danger-soft">Удалить</button>' : '') +
+              '<button type="submit" form="dayoff-form" class="btn-primary" style="flex:1">Сохранить</button>' +
+            '</div>' +
+          '</div>';
+
+        function closeModal() {
+          root.classList.add('hidden');
+          root.innerHTML = '';
+        }
+
+        root.onclick = function (e) { if (e.target === root) closeModal(); };
+        document.getElementById('m-close').onclick = closeModal;
+
+        const dateEl = document.getElementById('d-date');
+        const titleEl = document.getElementById('d-title');
+        const conflictsEl = document.getElementById('d-conflicts');
+
+        root.querySelectorAll('[data-dchip]').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            titleEl.value = chip.getAttribute('data-dchip');
+          });
+        });
+
+        function refreshConflicts() {
+          const warnings = detectScheduleConflicts({
+            date: dateEl.value,
+            isDayOff: true,
+            excludeId: ev.id,
+          });
+          if (warnings.length > 0) {
+            conflictsEl.classList.remove('hidden');
+            conflictsEl.innerHTML =
+              '<div class="conflict-title">Внимание:</div>' +
+              warnings.map(function (w) { return '<div>• ' + escapeHtml(w) + '</div>'; }).join('');
+          } else {
+            conflictsEl.classList.add('hidden');
+            conflictsEl.innerHTML = '';
+          }
+        }
+        dateEl.addEventListener('change', refreshConflicts);
+        refreshConflicts();
+
+        if (isEdit) {
+          document.getElementById('d-delete').onclick = function () {
+            openConfirm({
+              title: 'Удалить выходной?',
+              message: 'Запись «' + (ev.title || 'Выходной') + '» будет удалена из календаря.',
+              confirmText: 'Удалить',
+              danger: true,
+              onConfirm: function () {
+                state.events = state.events.filter(function (item) { return item.id !== ev.id; });
+                saveEvents();
+                closeModal();
+                renderApp();
+                showToast('Выходной удалён');
+              },
+            });
+          };
+        }
+
+        document.getElementById('dayoff-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          const date = dateEl.value;
+          if (!date) return;
+
+          const saved = {
+            id: isEdit ? ev.id : generateId(),
+            type: 'dayoff',
+            title: titleEl.value.trim() || 'Выходной',
+            date: date,
+            isDemo: false,
+          };
+
+          if (isEdit) {
+            const idx = state.events.findIndex(function (item) { return item.id === ev.id; });
+            if (idx !== -1) state.events[idx] = saved;
+          } else {
+            state.events.push(saved);
+          }
+
+          const dt = parseLocalDate(date);
+          if (dt) {
+            state.viewYear = dt.getFullYear();
+            state.viewMonth = dt.getMonth();
+            state.selectedDate = date;
+          }
+
+          saveEvents();
+          closeModal();
+          renderApp({ scrollToSelected: state.activeTab === 'calendar' && state.calListMode === 'month' });
+          showToast(isEdit ? 'Выходной обновлён' : 'Выходной добавлен');
+        });
+      }
+
+      /* ======================================================================
+         16. ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+         ====================================================================== */
+      function init() {
+        injectPwaManifest();
+        loadEvents();
+
+        // Нижняя навигация (4 вкладки)
+        document.querySelectorAll('.nav-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            switchTab(btn.getAttribute('data-tab'));
+          });
+        });
+
+        // Кнопка «+ Съёмка» в шапке
+        document.getElementById('header-add-btn').addEventListener('click', function () {
+          openShootModal(null, state.selectedDate);
+        });
+
+        // Импорт JSON
+        document.getElementById('json-import-input').addEventListener('change', function (e) {
+          const file = e.target.files && e.target.files[0];
+          handleImportFile(file);
+        });
+
+        // Закрытие модалок по Escape
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return;
+          const cRoot = document.getElementById('confirm-root');
+          const mRoot = document.getElementById('modal-root');
+          if (!cRoot.classList.contains('hidden')) {
+            cRoot.classList.add('hidden');
+            cRoot.innerHTML = '';
+          } else if (!mRoot.classList.contains('hidden')) {
+            mRoot.classList.add('hidden');
+            mRoot.innerHTML = '';
+          }
+        });
+
+        renderApp();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>
